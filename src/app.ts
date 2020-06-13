@@ -1,6 +1,18 @@
-const express = require('express')
-const app = express()
-const port = 3000
+const express = require('express');
+const csurf = require('csurf');
+const cookieParser = require('cookie-parser');
+const bodyParser = require('body-parser')
+
+const app = express();
+app.use(cookieParser());
+const port = 3000;
+
+interface Meme {
+    id: number;
+    name: string;
+    history: number[];
+    url: string;
+}
 
 const Meme = class Meme {
     constructor(id, name, history, url) {
@@ -28,6 +40,9 @@ let memes = [ new Meme(1, "Gold", [1000, 2000, 1000], 'https://i.redd.it/h7rplf9
               new Meme(10, "Clever", [1500, 5000], 'https://parade.com/wp-content/uploads/2020/03/coronavirus-meme-watermark-gray.jpg')
 ]
 
+const csrfProtection = csurf({cookie: true});
+const parseForm = bodyParser.urlencoded({ extended: false })
+
 function most_expensive() {
     let sortedMemes = memes;
     sortedMemes.sort((a, b) =>
@@ -46,21 +61,20 @@ app.get('/', function(req, res) {
     res.render('index', { title: 'Meme market', message: 'Hello there!', memes: most_expensive() })
 });
 
-app.get('/meme/:memeId', function (req, res) {
+app.get('/meme/:memeId', csrfProtection, function (req, res) {
     let meme = get_meme(req.params.memeId);
-    res.render('meme', { meme: meme })
+    res.render('meme', { meme: meme, csrfToken: req.csrfToken() });
 })
 
 app.use(express.urlencoded({
     extended: true
 }));
 
-app.post('/meme/:memeId', function (req, res) {
+app.post('/meme/:memeId', parseForm, csrfProtection, function (req, res) {
     let meme = get_meme(req.params.memeId);
     let price = req.body.price;
     meme.change_price(price);
-    console.log(req.body.price);
-    res.render('meme', { meme: meme })
+    res.render('meme', { meme: meme, csrfToken: req.csrfToken() });
 })
 
-app.listen(port, () => console.log(`Example app listening at http://localhost:${port}`))
+app.listen(port, () => console.log(`Example app listening at http://localhost:${port}`));

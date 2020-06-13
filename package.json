@@ -2,15 +2,21 @@
   "name": "www-lab9",
   "version": "1.0.0",
   "description": "Autor : Michał Borowski",
-  "main": "app.js",
+  "main": "src/app.ts",
   "dependencies": {
+    "@types/node": "^14.0.13",
+    "cookie-parser": "^1.4.5",
+    "csurf": "^1.11.0",
     "express": "^4.17.1",
-    "pug": "^2.0.4"
+    "pug": "^2.0.4",
+    "typescript": "^3.9.5"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "ts-node": "^8.10.2"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node app.js"
+    "start": "node src/app.ts"
   },
   "repository": {
     "type": "git",
