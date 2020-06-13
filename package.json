@@ -1,0 +1,25 @@
+{
+  "name": "www-lab9",
+  "version": "1.0.0",
+  "description": "Autor : Michał Borowski",
+  "main": "app.js",
+  "dependencies": {
+    "express": "^4.17.1",
+    "pug": "^2.0.4"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node app.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xBorox1/www-lab9.git"
+  },
+  "author": "Michał Borowski",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/xBorox1/www-lab9/issues"
+  },
+  "homepage": "https://github.com/xBorox1/www-lab9#readme"
+}

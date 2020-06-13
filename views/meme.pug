@@ -1,0 +1,17 @@
+html
+    head
+        title= meme.name
+    style
+        include style.css
+    body
+        h1="Mem : " + meme.name
+        h1="Price table"
+        table(style='width:100%', border='1')
+            each hist in [...meme.history].reverse()
+                tr
+                    th #{hist}
+        h1="Change price"
+        p Price:
+        form(action=("/meme/" + meme.id) method="POST")
+            input(type="number" name="price" placeholder="")
+            input(type='submit', value='Change')
