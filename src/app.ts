@@ -4,9 +4,21 @@ const cookieParser = require('cookie-parser');
 const bodyParser = require('body-parser');
 const sqlite3 = require('sqlite3');
 const session = require('express-session');
+const connect = require('connect-sqlite3');
+
+const SQLiteStore = connect(session);
+
+let sess = {
+    store: new SQLiteStore(),
+    secret: 'session',
+    cookie: { maxAge: 900000 },
+    resave: false,
+    saveUninitialized: true,
+};
 
 const app = express();
 app.use(cookieParser());
+app.use(session(sess));
 const port = 3000;
 
 class Meme {
@@ -73,14 +85,26 @@ function get_meme(id) {
     }
 }
 
+function actViews(sess) {
+    if(sess.views) {
+        sess.views++;
+    }
+    else {
+        sess.views = 1;
+    }
+}
+
 app.set('view engine', 'pug');
+
 app.get('/', function(req, res) {
-    res.render('index', { title: 'Meme market', message: 'Hello there!', memes: most_expensive() })
+    actViews(req.session);
+    res.render('index', { title: 'Meme market', message: 'Hello there!', memes: most_expensive(), viewsNum: req.session.views })
 });
 
 app.get('/meme/:memeId', csrfProtection, function (req, res) {
+    actViews(req.session);
     let meme = get_meme(req.params.memeId);
-    res.render('meme', { meme: meme, csrfToken: req.csrfToken() });
+    res.render('meme', { meme: meme, csrfToken: req.csrfToken(), viewsNum: req.session.views });
 })
 
 app.use(express.urlencoded({

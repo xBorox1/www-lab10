@@ -5,10 +5,12 @@
   "main": "src/app.ts",
   "dependencies": {
     "@types/node": "^14.0.13",
+    "connect-sqlite3": "^0.9.11",
     "cookie-parser": "^1.4.5",
     "csurf": "^1.11.0",
     "express": "^4.17.1",
     "express-session": "^1.17.1",
+    "express-session-sqlite": "^2.0.5",
     "pug": "^2.0.4",
     "sqlite-async": "^1.1.0",
     "sqlite3": "^4.2.0",

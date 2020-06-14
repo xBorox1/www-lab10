@@ -6,6 +6,7 @@ html
     body
         h1="Mem : " + meme.name
         h1="Price table"
+        h2="Views: " + viewsNum
         table(style='width:100%', border='1')
             each hist in [...meme.history].reverse()
                 tr
