@@ -16,7 +16,7 @@ function createDB() {
     sqlite3.verbose();
     let db = new sqlite3.Database('baza.db');
     db.run('CREATE TABLE memes (id INT, name VARCHAR(255), url VARCHAR(255));');
-    db.run('CREATE TABLE history (meme_id INT, price INT, order INT);');
+    db.run('CREATE TABLE history (meme_id INT, username VARCHAR(255), price INT, ord INT);');
     db.close();
 }
 
@@ -43,5 +43,6 @@ function clearDB() {
     db.close();
 }
 
+clearDB();
 createDB();
 writeMemes();

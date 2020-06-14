@@ -5,40 +5,77 @@ const bodyParser = require('body-parser');
 const sqlite3 = require('sqlite3');
 const session = require('express-session');
 const connect = require('connect-sqlite3');
+const passport = require('passport');
+const LocalStrategy = require('passport-local').Strategy;
+const bcrypt = require('bcrypt');
+const flash = require('express-flash');
 
 const SQLiteStore = connect(session);
 
 let sess = {
     store: new SQLiteStore(),
     secret: 'session',
-    cookie: { maxAge: 900000 },
-    resave: false,
+    resave: true,
     saveUninitialized: true,
+    cookie: {
+        expires: Date.now() + 9
+    }
 };
+
+let users = [];
+
+const authenticateUser = async (username, password, done) => {
+    const user = users.find(user => user.username === username);
+    if (user == null) {
+        return done(null, false, {message: 'No user with that username'})
+    }
+    try {
+        if (await bcrypt.compare(password, user.password)) {
+            return done(null, user)
+        } else {
+            return done(null, false, {message: 'Password incorrect'})
+        }
+    } catch (e) {
+        return done(e)
+    }
+}
+
+passport.use(new LocalStrategy({ usernameField: 'username' }, authenticateUser))
+passport.serializeUser((user, done) => done(null, user.id))
+passport.deserializeUser((id, done) => {
+    return done(null, () => users.find(user => user.id === id))
+})
 
 const app = express();
 app.use(cookieParser());
 app.use(session(sess));
+app.use(bodyParser.json());
+app.use(flash());
+app.use(express.urlencoded({
+    extended: true
+}));
+app.use(passport.initialize());
+app.use(passport.session());
 const port = 3000;
 
 class Meme {
     id: number;
     name: string;
-    history: number[];
+    history: [number, string][];
     url: string;
 
     constructor(id, name, url) {
         this.id = id;
         this.name = name;
-        this.history = [];
+        this.history = [[0, "admin"]];
         this.url = url;
     }
 
-    change_price(price) {
-        this.history.push(price);
+    change_price(price, username) {
+        this.history.push([price, username]);
         sqlite3.verbose();
         let db = new sqlite3.Database('baza.db');
-        db.run('INSERT INTO history (meme_id, price, ord) VALUES (' + this.id + ', ' + price + ', ' + (this.history.length - 1) + ');');
+        db.run('INSERT INTO history (meme_id, username, price, ord) VALUES (' + this.id + ', ' + "\"" + username + "\"" + ', ' + price + ', ' + (this.history.length - 1) + ');');
         db.close();
     }
 }
@@ -55,10 +92,10 @@ function getMemes() {
             memes.push(new Meme(id, name, url));
         });
 
-        db.each('SELECT meme_id, price FROM history ORDER BY ord;', [], (err, row) => {
+        db.each('SELECT meme_id, username, price FROM history ORDER BY ord;', [], (err, row) => {
             if (err) throw(err);
-            let {meme_id, price} = row;
-            memes[meme_id].history.push(price);
+            let {meme_id, username, price} = row;
+            memes[meme_id].history.push([price, username]);
         });
     });
 
@@ -75,7 +112,7 @@ const parseForm = bodyParser.urlencoded({ extended: false })
 function most_expensive() {
     let sortedMemes : Meme[] = memes;
     sortedMemes.sort((a, b) =>
-        {return b.history.slice(-1)[0] - a.history.slice(-1)[0];});
+        {return b.history.slice(-1)[0][0] - a.history.slice(-1)[0][0];});
     return sortedMemes.slice(0, 3);
 }
 
@@ -94,11 +131,18 @@ function actViews(sess) {
     }
 }
 
+function getUsername(req) {
+    if(req.session.passport && req.session.passport.user !== undefined && req.session.passport.user < users.length)
+        return users[req.session.passport.user].username;
+    return undefined;
+}
+
 app.set('view engine', 'pug');
 
 app.get('/', function(req, res) {
+    const username = getUsername(req);
     actViews(req.session);
-    res.render('index', { title: 'Meme market', message: 'Hello there!', memes: most_expensive(), viewsNum: req.session.views })
+    res.render('index', { title: 'Meme market', message: 'Hello there!', memes: most_expensive(), viewsNum: req.session.views, username: username })
 });
 
 app.get('/meme/:memeId', csrfProtection, function (req, res) {
@@ -107,64 +151,54 @@ app.get('/meme/:memeId', csrfProtection, function (req, res) {
     res.render('meme', { meme: meme, csrfToken: req.csrfToken(), viewsNum: req.session.views });
 })
 
-app.use(express.urlencoded({
-    extended: true
-}));
+app.get('/login', csrfProtection, function(req, res) {
+    actViews(req.session);
+    res.render('login', { csrfToken: req.csrfToken(), viewsNum: req.session.views })
+});
+
+app.get('/register', csrfProtection, function(req, res) {
+    actViews(req.session);
+    res.render('register', { csrfToken: req.csrfToken(), viewsNum: req.session.views })
+});
+
+app.post('/register', async (req, res) => {
+    try {
+        const hashedPassword = await bcrypt.hash(req.body.password, 10)
+        users.push({
+            id: users.length,
+            username: req.body.username,
+            password: hashedPassword
+        })
+        res.redirect('/login')
+    } catch {
+        res.redirect('/register')
+    }
+});
 
 app.post('/meme/:memeId', parseForm, csrfProtection, function (req, res) {
+    const username = getUsername(req);
+    if(username === undefined) {
+        res.send("You are not logged in!");
+        return;
+    }
     let meme = get_meme(req.params.memeId);
     let price = req.body.price;
-    meme.change_price(price);
+    meme.change_price(price, username);
     res.render('meme', { meme: meme, csrfToken: req.csrfToken() });
+})
+
+app.post('/login', passport.authenticate('local', {
+    successRedirect: '/',
+    failureRedirect: '/login',
+    failureFlash: true
+}))
+
+app.get('/logout', (req, res) => {
+    req.logOut()
+    res.redirect('/')
 })
 
 app.listen(port, function() {
     console.log(`Example app listening at http://localhost:${port}`);
 });
 
-let basicMemes = [ new Meme(1, "Gold", 'https://i.redd.it/h7rplf9jt8y21.png'),
-    new Meme(2, "Platinum", 'http://www.quickmeme.com/img/90/90d3d6f6d527a64001b79f4e13bc61912842d4a5876d17c1f011ee519d69b469.jpg'),
-    new Meme(3, "Elite", 'https://i.imgflip.com/30zz5g.jpg'),
-    new Meme(4, "Another", 'http://www.quickmeme.com/img/e8/e849d91ad0841af515b0b1d55acf5877b1bef22f8121aad8ac5137ccc2871dcc.jpg'),
-    new Meme(5, "Polish", 'https://i.pinimg.com/474x/48/ed/d8/48edd8204da323e858c9a77a84789af6.jpg'),
-    new Meme(6, "Boromir", 'https://i.wpimg.pl/O/335x282/d.wpimg.pl/2415135-1935720870/meme.jpg'),
-    new Meme(7, "Political", 'https://www.wprost.pl/_thumb/75/6f/7e2ba24f862eac47fdfb039f1afa.jpeg'),
-    new Meme(8, "Avocado", 'https://www.fosi.org/media/images/funny-game-of-thrones-memes-coverimage.width-800.jpg'),
-    new Meme(9, "500+", 'https://www.wprost.pl/_thumb/9b/5c/d73d4f3bfae704d20c0d99cf201c.jpeg'),
-    new Meme(10, "Clever", 'https://parade.com/wp-content/uploads/2020/03/coronavirus-meme-watermark-gray.jpg')
-]
-
-function createDB() {
-    sqlite3.verbose();
-    let db = new sqlite3.Database('baza.db');
-    db.run('CREATE TABLE memes (id INT, name VARCHAR(255), url VARCHAR(255));');
-    db.run('CREATE TABLE history (meme_id INT, price INT, ord INT);');
-    db.close();
-}
-
-function writeMemes() {
-    sqlite3.verbose();
-    let db = new sqlite3.Database('baza.db');
-    let memeCommand = 'INSERT INTO memes (id, name, url) VALUES ';
-    let curId = 0;
-    for(const meme of basicMemes) {
-        memeCommand += "(" + curId + ", \"" + meme.name + "\", \"" + meme.url + "\")";
-        curId++;
-        if(curId != basicMemes.length) memeCommand += ', ';
-    }
-    memeCommand += ';';
-    db.run(memeCommand);
-    db.close();
-}
-
-function clearDB() {
-    sqlite3.verbose();
-    let db = new sqlite3.Database('baza.db');
-    db.run('DROP TABLE memes;');
-    db.run('DROP TABLE history;');
-    db.close();
-}
-
-//clearDB();
-//createDB();
-//writeMemes();

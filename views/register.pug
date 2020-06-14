@@ -1,0 +1,13 @@
+html
+    head
+        title = "register"
+    style
+        include style.css
+    body
+        h2="Views: " + viewsNum
+        form(action="/register" method="POST")
+            input(type="hidden" name="_csrf" value=csrfToken)
+            input(type="text" name="username" id="username" placeholder="Username here")
+            input(type="password" name="password" id="password" placeholder="Password here")
+            input(type='submit' value='Register')
+        a(href="/register")="Login now"

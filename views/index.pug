@@ -5,6 +5,13 @@ html
         include style.css
     body
         h1= message
+        h1= (username !== undefined) ? "Logged as : " + username : "Not logged"
+        a(href="/login") login
+        br
+        a(href="/register") register
+        br
+        a(href="/logout") logout
+        br
         h2="Views: " + viewsNum
         img(src="https://sayingimages.com/wp-content/uploads/crying-obamma-beautiful-meme.png")
         h1="Meme list"
@@ -12,5 +19,5 @@ html
             each meme in memes
                 li
                     a(href="meme/" + meme.id) #{meme.name}
-                    p price : #{meme.history.slice(-1)[0]}
+                    p price : #{meme.history.slice(-1)[0][0]}
                     img(src=meme.url)
