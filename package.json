@@ -28,12 +28,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/xBorox1/www-lab9.git"
+    "url": "git+https://github.com/xBorox1/www-lab10.git"
   },
   "author": "Michał Borowski",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/xBorox1/www-lab9/issues"
+    "url": "https://github.com/xBorox1/www-lab10/issues"
   },
-  "homepage": "https://github.com/xBorox1/www-lab9#readme"
+  "homepage": "https://github.com/xBorox1/www-lab10#readme"
 }
